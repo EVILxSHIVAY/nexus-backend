@@ -52,7 +52,7 @@ app.set('trust proxy', 1);
 // 🔥 CORS FIX (allow cookies)
 app.use(cors({
   origin: [
-    "https://nexusss-1.onrender.com",
+    "https://nexus-backend-6b8m.onrender.com",
     "http://localhost:3000"
   ],
   credentials: true
@@ -79,25 +79,17 @@ passport.deserializeUser((id, done) => done(null, findUserById(id) || false));
 
 passport.use(new LocalStrategy(
   { usernameField: 'email', passwordField: 'password' },
-  async (email, password, done) => {
-    const user = findUserByEmail(email);
-    if (!user)              return done(null, false, { message: 'No account found with that email.' });
-    passport.use(new LocalStrategy(
-  { usernameField: 'email', passwordField: 'password' },
   (email, password, done) => {
     const user = findUserByEmail(email);
 
     if (!user) {
-      return done(null, false, { message: 'No account found with that email.' });
+      return done(null, false, { message: 'No account found' });
     }
 
     if (user.password !== password) {
-      return done(null, false, { message: 'Incorrect password.' });
+      return done(null, false, { message: 'Incorrect password' });
     }
 
-    return done(null, user);
-  }
-));
     return done(null, user);
   }
 ));
@@ -129,27 +121,11 @@ const io = new Server(httpServer, {
 
 io.use((socket, next) => sessionMiddleware(socket.request, {}, next));
 
-// ── Page routes ───────────────────────────────────────────────────────────────
-app.get('/', (req, res) => {
-  if (req.isAuthenticated()) return res.redirect('/dashboard');
-  res.redirect('/login');
-});
-
-app.get('/login', (req, res) => {
-  if (req.isAuthenticated()) return res.redirect('/dashboard');
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
-
-app.get('/dashboard', requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
-});
-
-app.get('/call', requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'call.html'));
-});
-
-app.get('/logout', (req, res) => {
-  req.logout(() => { req.session.destroy(); res.redirect('/login'); });
+app.get('/api/logout', (req, res) => {
+  req.logout(() => {
+    req.session.destroy();
+    res.json({ success: true });
+  });
 });
 
 // ── Auth API ──────────────────────────────────────────────────────────────────
@@ -410,7 +386,10 @@ io.on('connection', socket => {
 });
 
 // ── Catch-all ─────────────────────────────────────────────────────────────────
-app.use((req, res) => res.redirect('/login'));
+app.use((req, res) => {
+  res.status(404).json({ error: "Route not found" });
+});
+
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
