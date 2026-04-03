@@ -14,7 +14,7 @@ const LocalStrategy  = require('passport-local').Strategy;
 const app        = express();
 const httpServer = createServer(app);
 
-// ── Data files ───────────────────────────────────────────────────────────────
+// ── Data files ──────────────────────────────────────────────────────────────
 const DATA_DIR      = path.join(__dirname, 'data');
 const USERS_FILE    = path.join(DATA_DIR, 'users.json');
 const MEETINGS_FILE = path.join(DATA_DIR, 'meetings.json');
@@ -50,14 +50,15 @@ const genRoomId = () => {
 app.set('trust proxy', 1);
 
 // 🔥 CORS FIX (allow cookies)
-const cors = require('cors');
 
 app.use(cors({
   origin: "https://nexus-frontend-z4o5.vercel.app", // 🔥 YOUR FRONTEND
   credentials: true
 }));
-app.options('*', cors());
-
+app.options('*', cors({
+  origin: "https://nexus-frontend-z4o5.vercel.app",
+  credentials: true
+}));
 // ── Session ──────────────────────────────────────────────────────────────────
 const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET || 'nexus-secret',
@@ -115,7 +116,11 @@ const requireAuth = (req, res, next) => {
 
 // ── Socket.IO ─────────────────────────────────────────────────────────────────
 const io = new Server(httpServer, {
-  cors: { origin: '*', methods: ['GET', 'POST'] },
+  cors: {
+    origin: "https://nexus-frontend-z4o5.vercel.app",
+    methods: ["GET", "POST"],
+    credentials: true
+  },
   transports: ['websocket', 'polling']
 });
 
