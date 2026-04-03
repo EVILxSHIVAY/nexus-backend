@@ -14,7 +14,7 @@ const UI = (() => {
 
   // ── Init ─────────────────────────────────────────────────────────────────
   function init() {
-    makePipDraggable();
+    //makePipDraggable();
   }
 
   // ── Landing ───────────────────────────────────────────────────────────────
@@ -89,49 +89,6 @@ const UI = (() => {
     label.textContent = text;
   }
 
-  function updateParticipantCount(count) {
-    document.getElementById('part-count').textContent = '👤 ' + count;
-  }
-
-  // ── Video tiles ───────────────────────────────────────────────────────────
-  function addRemoteTile(socketId, name, stream) {
-    const grid = document.getElementById('videos-grid');
-
-    // Remove empty state
-    const empty = document.getElementById('empty-state');
-    if (empty) empty.remove();
-
-    // Check if tile already exists
-    let tile = document.getElementById('tile-' + socketId);
-    if (tile) {
-      tile.querySelector('video').srcObject = stream;
-      return;
-    }
-
-    tile = document.createElement('div');
-    tile.className = 'video-tile';
-    tile.id = 'tile-' + socketId;
-
-    const initial = name.charAt(0).toUpperCase();
-
-    tile.innerHTML = `
-      <video autoplay playsinline></video>
-      <div class="video-avatar">
-        <div class="avatar-circle">${initial}</div>
-        <div class="avatar-name">${name}</div>
-      </div>
-      <div class="video-name-tag">${name}</div>
-      <div class="video-badges">
-        <div class="badge muted-mic" title="Muted">🔇</div>
-        <div class="badge muted-cam" title="Camera off">📵</div>
-      </div>
-    `;
-
-    tile.querySelector('video').srcObject = stream;
-    grid.appendChild(tile);
-    updateGridLayout();
-  }
-
   function removeRemoteTile(socketId) {
     const tile = document.getElementById('tile-' + socketId);
     if (tile) {
@@ -145,6 +102,57 @@ const UI = (() => {
       }, 200);
     }
   }
+
+  function updateParticipantCount(count) {
+    document.getElementById('part-count').textContent = '👤 ' + count;
+  }
+
+ function addRemoteTile(socketId, name, stream) {
+  const grid = document.getElementById('videos-grid');
+
+  const empty = document.getElementById('empty-state');
+  if (empty) empty.remove();
+
+  let tile = document.getElementById('tile-' + socketId);
+  if (tile) {
+    tile.querySelector('video').srcObject = stream;
+    return;
+  }
+
+  tile = document.createElement('div');
+  tile.className = 'video-tile';
+  tile.id = 'tile-' + socketId;
+
+  const initial = name.charAt(0).toUpperCase();
+
+  tile.innerHTML = `
+    <video autoplay playsinline></video>
+    <div class="video-avatar">
+      <div class="avatar-circle">${initial}</div>
+      <div class="avatar-name">${name}</div>
+    </div>
+    <div class="video-name-tag">${name}</div>
+    <div class="video-badges">
+      <div class="badge muted-mic" title="Muted">🔇</div>
+      <div class="badge muted-cam" title="Camera off">📵</div>
+    </div>
+  `;
+
+  const video = tile.querySelector('video');
+  video.srcObject = stream;
+
+  // 🔥 ADD THIS
+  video.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      video.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  });
+
+  grid.appendChild(tile);
+  updateGridLayout();
+}
 
   function checkEmptyGrid() {
     const grid = document.getElementById('videos-grid');
@@ -174,8 +182,18 @@ const UI = (() => {
 
   // ── Local video ───────────────────────────────────────────────────────────
   function setLocalStream(stream) {
-    document.getElementById('local-video').srcObject = stream;
-  }
+  const video = document.getElementById('local-video');
+  video.srcObject = stream;
+
+  // Fullscreen on click
+  video.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      video.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  });
+}
 
   function setMicState(on) {
     const btn = document.getElementById('btn-mic');

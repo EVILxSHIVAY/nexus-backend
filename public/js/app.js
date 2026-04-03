@@ -94,6 +94,36 @@ const App = (() => {
       UI.setPeerMediaState(socketId, audio, video);
     });
 
+    // Blocked: already in this room from another tab
+    socket.on('join-error', ({ code, message }) => {
+      if (code !== 'ALREADY_IN_ROOM') return;
+
+      UI.hideCallScreen();
+
+      const card = document.querySelector('.landing-card');
+      if (!card) return;
+
+      const old = card.querySelector('.join-error-banner');
+      if (old) old.remove();
+
+      const banner = document.createElement('div');
+      banner.className  = 'join-error-banner';
+      banner.style.cssText = [
+        'margin-top:14px',
+        'padding:11px 14px',
+        'background:rgba(248,113,113,0.12)',
+        'border:1px solid rgba(248,113,113,0.35)',
+        'border-radius:8px',
+        'font-size:13px',
+        'line-height:1.55',
+        'color:#fca5a5'
+      ].join(';');
+      banner.textContent = message;
+      card.appendChild(banner);
+
+      UI.toast('Already in this meeting from another tab.');
+    });
+
     WebRTC.onTrack((socketId, name, stream) => {
       UI.addRemoteTile(socketId, name, stream);
       updateParticipantCount();

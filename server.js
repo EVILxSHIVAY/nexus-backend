@@ -10,8 +10,6 @@ const fs             = require('fs');
 const session        = require('express-session');
 const passport       = require('passport');
 const LocalStrategy  = require('passport-local').Strategy;
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const bcrypt         = require('bcryptjs');
 
 const app        = express();
 const httpServer = createServer(app);
@@ -20,37 +18,60 @@ const httpServer = createServer(app);
 const DATA_DIR      = path.join(__dirname, 'data');
 const USERS_FILE    = path.join(DATA_DIR, 'users.json');
 const MEETINGS_FILE = path.join(DATA_DIR, 'meetings.json');
+const LOGIN_FILE  = path.join(DATA_DIR, 'login.json');
+const LOGOUT_FILE = path.join(DATA_DIR, 'logout.json');
 
 if (!fs.existsSync(DATA_DIR))      fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(USERS_FILE))    fs.writeFileSync(USERS_FILE,    '[]', 'utf8');
 if (!fs.existsSync(MEETINGS_FILE)) fs.writeFileSync(MEETINGS_FILE, '[]', 'utf8');
+if (!fs.existsSync(LOGIN_FILE))  fs.writeFileSync(LOGIN_FILE,  '[]', 'utf8');
+if (!fs.existsSync(LOGOUT_FILE)) fs.writeFileSync(LOGOUT_FILE, '[]', 'utf8');
 
 // ── File helpers ─────────────────────────────────────────────────────────────
 const readUsers    = () => { try { return JSON.parse(fs.readFileSync(USERS_FILE,    'utf8')); } catch(_){ return []; } };
 const writeUsers   = u  => fs.writeFileSync(USERS_FILE,    JSON.stringify(u, null, 2), 'utf8');
 const readMeetings = () => { try { return JSON.parse(fs.readFileSync(MEETINGS_FILE, 'utf8')); } catch(_){ return []; } };
 const writeMeetings= m  => fs.writeFileSync(MEETINGS_FILE, JSON.stringify(m, null, 2), 'utf8');
+const readLogin  = () => JSON.parse(fs.readFileSync(LOGIN_FILE, 'utf8') || '[]');
+const writeLogin = d  => fs.writeFileSync(LOGIN_FILE, JSON.stringify(d, null, 2));
+
+const readLogout  = () => JSON.parse(fs.readFileSync(LOGOUT_FILE, 'utf8') || '[]');
+const writeLogout = d  => fs.writeFileSync(LOGOUT_FILE, JSON.stringify(d, null, 2));
 
 const findUserById      = id    => readUsers().find(u => u.id === id);
 const findUserByEmail   = email => readUsers().find(u => u.email?.toLowerCase() === email?.toLowerCase());
-const findUserByGoogleId= gid   => readUsers().find(u => u.googleId === gid);
 
 const genRoomId = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 };
 
+// 🔥 TRUST PROXY (IMPORTANT FOR RENDER)
+app.set('trust proxy', 1);
+
+// 🔥 CORS FIX (allow cookies)
+app.use(cors({
+  origin: [
+    "https://nexusss-1.onrender.com",
+    "http://localhost:3000"
+  ],
+  credentials: true
+}));
+
 // ── Session ──────────────────────────────────────────────────────────────────
 const sessionMiddleware = session({
-  secret: process.env.SESSION_SECRET || 'nexus-dev-secret',
+  secret: process.env.SESSION_SECRET || 'nexus-secret',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure:   process.env.NODE_ENV === 'production',
+    secure: false,        // 🔥 IMPORTANT (Render fix)
     httpOnly: true,
-    maxAge:   7 * 24 * 60 * 60 * 1000
+    sameSite: 'lax',      // 🔥 REQUIRED
+    maxAge: 7 * 24 * 60 * 60 * 1000
   }
 });
+
+app.use(sessionMiddleware);
 
 // ── Passport ─────────────────────────────────────────────────────────────────
 passport.serializeUser((user, done) => done(null, user.id));
@@ -61,51 +82,25 @@ passport.use(new LocalStrategy(
   async (email, password, done) => {
     const user = findUserByEmail(email);
     if (!user)              return done(null, false, { message: 'No account found with that email.' });
-    if (!user.passwordHash) return done(null, false, { message: 'This account uses Google Sign-In.' });
-    const ok = await bcrypt.compare(password, user.passwordHash);
-    if (!ok)                return done(null, false, { message: 'Incorrect password.' });
+    passport.use(new LocalStrategy(
+  { usernameField: 'email', passwordField: 'password' },
+  (email, password, done) => {
+    const user = findUserByEmail(email);
+
+    if (!user) {
+      return done(null, false, { message: 'No account found with that email.' });
+    }
+
+    if (user.password !== password) {
+      return done(null, false, { message: 'Incorrect password.' });
+    }
+
     return done(null, user);
   }
 ));
-
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  passport.use(new GoogleStrategy(
-    {
-      clientID:     process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL:  process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/auth/google/callback'
-    },
-    (accessToken, refreshToken, profile, done) => {
-      const users = readUsers();
-      const email = profile.emails?.[0]?.value;
-
-      let user = findUserByGoogleId(profile.id);
-      if (user) return done(null, user);
-
-      user = email ? findUserByEmail(email) : null;
-      if (user) {
-        user.googleId = profile.id;
-        user.avatar   = profile.photos?.[0]?.value || user.avatar;
-        writeUsers(users.map(u => u.id === user.id ? user : u));
-        return done(null, user);
-      }
-
-      const newUser = {
-        id:           uuidv4(),
-        name:         profile.displayName || 'NEXUS User',
-        email:        email || null,
-        passwordHash: null,
-        googleId:     profile.id,
-        avatar:       profile.photos?.[0]?.value || null,
-        initial:      (profile.displayName || 'N').charAt(0).toUpperCase(),
-        createdAt:    new Date().toISOString()
-      };
-      users.push(newUser);
-      writeUsers(users);
-      return done(null, newUser);
-    }
-  ));
-}
+    return done(null, user);
+  }
+));
 
 // ── Express middleware ────────────────────────────────────────────────────────
 app.use(cors());
@@ -167,13 +162,16 @@ app.post('/api/auth/signup', async (req, res) => {
   if (findUserByEmail(email))
     return res.status(400).json({ error: 'An account with this email already exists.' });
 
-  const passwordHash = await bcrypt.hash(password, 10);
   const newUser = {
-    id: uuidv4(), name: name.trim().substring(0, 50),
-    email: email.toLowerCase().trim(), passwordHash,
-    googleId: null, avatar: null,
-    initial: name.trim().charAt(0).toUpperCase(),
-    createdAt: new Date().toISOString()
+    id: uuidv4(),
+    name: name.trim().substring(0, 50),
+    email: email.toLowerCase().trim(),
+    password,
+    createdAt: new Date().toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    })
   };
   const users = readUsers();
   users.push(newUser);
@@ -181,52 +179,56 @@ app.post('/api/auth/signup', async (req, res) => {
 
   req.login(newUser, err => {
     if (err) return res.status(500).json({ error: 'Signup succeeded but login failed.' });
-    const { passwordHash: _, ...safe } = newUser;
+    const { password, ...safe } = newUser;
     res.json({ success: true, user: safe });
   });
 });
 
 app.post('/api/auth/login', (req, res, next) => {
-  passport.authenticate('local', (err, user, info) => {
-    if (err)   return res.status(500).json({ error: 'Server error.' });
-    if (!user) return res.status(401).json({ error: info?.message || 'Invalid credentials.' });
-    req.login(user, err2 => {
-      if (err2) return res.status(500).json({ error: 'Login failed.' });
-      const { passwordHash: _, ...safe } = user;
-      res.json({ success: true, user: safe });
-    });
-  })(req, res, next);
+  const { email, password } = req.body;
+
+  const users = readUsers();
+  const user = users.find(u => u.email === email);
+
+  if (!user || user.password !== password) {
+    return res.status(401).json({ message: "Invalid email or password" });
+  }
+
+  req.login(user, (err) => {
+    if (err) return next(err);
+
+    res.json({ message: "Login successful", user });
+  });
 });
 
 app.get('/api/me', requireAuth, (req, res) => {
-  const { passwordHash: _, ...safe } = req.user;
+  const { password, ...safe } = req.user; // remove password
   res.json(safe);
 });
 
 app.put('/api/me', requireAuth, (req, res) => {
   const { name } = req.body;
-  if (!name?.trim()) return res.status(400).json({ error: 'Name is required.' });
+
+  if (!name?.trim()) {
+    return res.status(400).json({ error: 'Name is required.' });
+  }
+
   const users = readUsers();
-  const idx   = users.findIndex(u => u.id === req.user.id);
-  if (idx === -1) return res.status(404).json({ error: 'User not found.' });
-  users[idx].name    = name.trim().substring(0, 50);
+  const idx = users.findIndex(u => u.id === req.user.id);
+
+  if (idx === -1) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+
+  users[idx].name = name.trim().substring(0, 50);
   users[idx].initial = name.trim().charAt(0).toUpperCase();
+
   writeUsers(users);
-  const { passwordHash: _, ...safe } = users[idx];
+
+  const { password, ...safe } = users[idx]; // remove password
+
   req.login(users[idx], () => res.json(safe));
 });
-
-// ── Google OAuth ──────────────────────────────────────────────────────────────
-app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-
-app.get('/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login?error=google' }),
-  (req, res) => {
-    const returnTo = req.session.returnTo || '/dashboard';
-    delete req.session.returnTo;
-    res.redirect(returnTo);
-  }
-);
 
 // ── Meetings API ──────────────────────────────────────────────────────────────
 app.get('/api/meetings', requireAuth, (req, res) => {
@@ -239,13 +241,24 @@ app.get('/api/meetings', requireAuth, (req, res) => {
 app.post('/api/meetings/create', requireAuth, (req, res) => {
   const roomId  = genRoomId();
   const meeting = {
-    id: uuidv4(), roomId,
-    title:     req.body.title?.trim() || `Meeting ${roomId}`,
-    hostId:    req.user.id,
-    hostName:  req.user.name,
-    startedAt: new Date().toISOString(),
-    endedAt:   null, duration: null, participants: []
-  };
+  id: uuidv4(),
+  roomId,
+  title: req.body.title?.trim() || `Meeting ${roomId}`,
+
+  host: {
+    id: req.user.id,
+    name: req.user.name
+  },
+
+  participants: [{
+  userId: req.user.id,
+  name: req.user.name,
+  joinedAt: new Date().toISOString()
+}],
+
+  startedAt: new Date().toISOString()
+
+};
   const meetings = readMeetings();
   meetings.push(meeting);
   writeMeetings(meetings);
@@ -293,7 +306,26 @@ io.on('connection', socket => {
     if (!roomId || !name) return;
     if (currentRoom) leaveRoom();
 
-    currentRoom = roomId.toUpperCase();
+    const targetRoom = roomId.toUpperCase();
+
+    // ── Duplicate session check ───────────────────────────────────────────────
+    // If this is a logged-in user, make sure they are not already inside this
+    // room from another tab or window. Block the second connection immediately.
+    if (sessionUser?.id && rooms.has(targetRoom)) {
+      const existing = rooms.get(targetRoom);
+      const alreadyIn = Array.from(existing.peers.values())
+        .some(p => p.userId === sessionUser.id);
+
+      if (alreadyIn) {
+        socket.emit('join-error', {
+          code:    'ALREADY_IN_ROOM',
+          message: 'You are already in this meeting from another tab or window. Close that tab first.'
+        });
+        return; // stop here — do NOT add them to the room
+      }
+    }
+
+    currentRoom = targetRoom;
     currentName = sessionUser ? sessionUser.name : name.trim().substring(0, 30);
 
     const isNew = !rooms.has(currentRoom);
@@ -384,7 +416,6 @@ app.use((req, res) => res.redirect('/login'));
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
   console.log(`\n  NEXUS running → http://localhost:${PORT}`);
-  console.log(`  Google OAuth : ${process.env.GOOGLE_CLIENT_ID ? 'configured' : 'not set (email login only)'}\n`);
 });
 
 module.exports = { app, io };
