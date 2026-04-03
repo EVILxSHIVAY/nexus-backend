@@ -50,13 +50,13 @@ const genRoomId = () => {
 app.set('trust proxy', 1);
 
 // 🔥 CORS FIX (allow cookies)
+const cors = require('cors');
+
 app.use(cors({
-  origin: [
-    "https://nexus-backend-6b8m.onrender.com",
-    "http://localhost:3000"
-  ],
+  origin: "https://nexus-frontend-z4o5.vercel.app", // 🔥 YOUR FRONTEND
   credentials: true
 }));
+app.options('*', cors());
 
 // ── Session ──────────────────────────────────────────────────────────────────
 const sessionMiddleware = session({
