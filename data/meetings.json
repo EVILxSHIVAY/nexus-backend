@@ -1,0 +1,91 @@
+[
+  {
+    "id": "eb58e78d-8e94-48ea-8cc3-c1bc2452bcb1",
+    "roomId": "FXYKVDCB",
+    "title": "idt",
+    "host": {
+      "id": "e0efb30d-d221-4b1d-a355-dced016713fd",
+      "name": "shiva"
+    },
+    "participants": [
+      {
+        "userId": "e0efb30d-d221-4b1d-a355-dced016713fd",
+        "name": "shiva",
+        "joinedAt": "2026-04-03T03:48:12.834Z"
+      }
+    ],
+    "startedAt": "2026-04-03T03:48:12.834Z"
+  },
+  {
+    "id": "46453cc8-dafe-4ae9-8a3e-4ec525a1f605",
+    "roomId": "4GJGLXV7",
+    "title": "shiva's Meeting",
+    "hostId": "e0efb30d-d221-4b1d-a355-dced016713fd",
+    "hostName": "shiva",
+    "startedAt": "2026-04-03T03:48:16.696Z",
+    "endedAt": "2026-04-03T03:48:29.166Z",
+    "duration": 12,
+    "participants": [
+      {
+        "userId": "e0efb30d-d221-4b1d-a355-dced016713fd",
+        "name": "shiva",
+        "joinedAt": "2026-04-03T03:48:16.696Z",
+        "leftAt": "2026-04-03T03:48:29.166Z"
+      }
+    ]
+  },
+  {
+    "id": "abe362e2-344a-465c-95b7-99b3aca299a7",
+    "roomId": "4GJGLXV7",
+    "title": "shiva's Meeting",
+    "hostId": "e0efb30d-d221-4b1d-a355-dced016713fd",
+    "hostName": "shiva",
+    "startedAt": "2026-04-03T11:19:29.873Z",
+    "endedAt": "2026-04-03T11:19:33.012Z",
+    "duration": 3,
+    "participants": [
+      {
+        "userId": "e0efb30d-d221-4b1d-a355-dced016713fd",
+        "name": "shiva",
+        "joinedAt": "2026-04-03T11:19:29.873Z",
+        "leftAt": "2026-04-03T11:19:33.012Z"
+      }
+    ]
+  },
+  {
+    "id": "5a6f66c3-1815-4dab-b8e3-3778497bf6b8",
+    "roomId": "4GJGLXV7",
+    "title": "shiva's Meeting",
+    "hostId": "e0efb30d-d221-4b1d-a355-dced016713fd",
+    "hostName": "shiva",
+    "startedAt": "2026-04-03T11:20:49.636Z",
+    "endedAt": null,
+    "duration": null,
+    "participants": [
+      {
+        "userId": "e0efb30d-d221-4b1d-a355-dced016713fd",
+        "name": "shiva",
+        "joinedAt": "2026-04-03T11:20:49.636Z",
+        "leftAt": null
+      }
+    ]
+  },
+  {
+    "id": "b1a6b926-7592-41e5-90d0-66d379cd17a9",
+    "roomId": "4GJGLXV7",
+    "title": "shiva's Meeting",
+    "hostId": "e0efb30d-d221-4b1d-a355-dced016713fd",
+    "hostName": "shiva",
+    "startedAt": "2026-04-03T11:39:15.328Z",
+    "endedAt": null,
+    "duration": null,
+    "participants": [
+      {
+        "userId": "e0efb30d-d221-4b1d-a355-dced016713fd",
+        "name": "shiva",
+        "joinedAt": "2026-04-03T11:39:15.328Z",
+        "leftAt": null
+      }
+    ]
+  }
+]
