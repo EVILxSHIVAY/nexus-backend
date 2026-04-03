@@ -51,14 +51,15 @@ app.set('trust proxy', 1);
 
 // 🔥 CORS FIX (allow cookies)
 
-app.use(cors({
-  origin: "https://nexus-frontend-z4o5.vercel.app", // 🔥 YOUR FRONTEND
-  credentials: true
-}));
-app.options('*', cors({
+const corsOptions = {
   origin: "https://nexus-frontend-z4o5.vercel.app",
-  credentials: true
-}));
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 // ── Session ──────────────────────────────────────────────────────────────────
 const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET || 'nexus-secret',
